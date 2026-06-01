@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大乐透助手 - 选号 & 中奖查询</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #0f0f0f; min-height: 100vh; color: #e0e0e0; }
+
+/* Header */
+.header { background: linear-gradient(135deg, #c62828, #1a1a2e); color: #fff; padding: 24px 20px; text-align: center; border-bottom: 1px solid #2a2a2a; }
+.header h1 { font-size: 22px; font-weight: 700; letter-spacing: 2px; }
+.header p { font-size: 12px; opacity: .6; margin-top: 4px; }
+
+/* Tabs */
+.tabs { display: flex; max-width: 500px; margin: 0 auto; background: #1a1a1a; border-radius: 10px; overflow: hidden; }
+.tab { flex: 1; padding: 12px 0; text-align: center; cursor: pointer; font-size: 14px; font-weight: 600; color: #777; transition: all .2s; border-bottom: 2px solid transparent; user-select: none; }
+.tab:hover { color: #aaa; }
+.tab.active { color: #e53935; border-bottom-color: #e53935; background: #141414; }
+
+/* Container */
+.container { max-width: 600px; margin: 0 auto; padding: 16px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* Buttons */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+.btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.btn:active { transform: scale(.96); }
+.btn-red { background: #c62828; color: #fff; }
+.btn-red:hover { background: #b71c1c; }
+.btn-blue { background: #1565c0; color: #fff; }
+.btn-blue:hover { background: #0d47a1; }
+.btn-outline { background: transparent; color: #e53935; border: 1.5px solid #e53935; }
+.btn-outline:hover { background: rgba(229,57,53,.08); }
+.btn-dark { background: #2a2a2a; color: #999; }
+.btn-dark:hover { background: #333; color: #ddd; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+
+/* Result */
+.result { text-align: center; padding: 18px; border-radius: 10px; margin-top: 14px; }
+.result.win { background: rgba(255,152,0,.1); border: 1px solid rgba(255,152,0,.25); }
+.result.no-win { background: rgba(255,255,255,.03); border: 1px solid #2a2a2a; }
+.result .match-info { font-size: 14px; color: #aaa; margin-bottom: 6px; }
+.result .match-info b { color: #ff9800; }
+.result .tier-name { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+.result .prize-amount { font-size: 26px; font-weight: 800; color: #e53935; }
+.result .no-win-text { font-size: 18px; font-weight: 600; color: #666; }
+.result .no-win-sub { font-size: 13px; color: #555; margin-top: 4px; }
+
+/* Draw info */
+.draw-info { text-align: center; margin-bottom: 12px; font-size: 13px; color: #aaa; display: none; padding: 8px; background: rgba(255,255,255,.03); border-radius: 8px; }
+.draw-info b { color: #ff9800; }
+
+@media (max-width: 420px) {
+  .btn { padding: 8px 16px; font-size: 13px; }
+  .tab { font-size: 13px; padding: 10px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>大乐透助手</h1>
+  <p>随机选号 · 手动自选 · 中奖查询</p>
+</div>
+
+<div style="padding: 16px 16px 0;">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('pick')">🎯 选号</div>
+    <div class="tab" onclick="switchTab('check')">🏆 中奖查询</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 选号页 ===== -->
+  <div id="page-pick" class="page active">
+    <div class="btn-row" style="margin-top:24px;">
+      <button class="btn btn-red" onclick="quickPick(1)">随机1注</button>
+      <button class="btn btn-red" onclick="quickPick(3)">随机3注</button>
+      <button class="btn btn-red" onclick="quickPick(5)">随机5注</button>
+    </div>
+    <div id="multiBatch"></div>
+  </div>
+
+  <!-- ===== 中奖查询页 ===== -->
+  <div id="page-check" class="page">
+
+    <!-- 我的号码 -->
+    <div style="margin:20px 0 14px;">
+      <div style="font-size:13px;color:#888;margin-bottom:10px;">我的号码</div>
+      <div id="myInputs" style="display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#ef5350;">前区</span>
+        <input type="text" maxlength="2" data-zone="front" data-idx="0" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="1" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="2" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="3" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="4" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <span style="font-size:12px;color:#42a5f5;margin-left:10px;">后区</span>
+        <input type="text" maxlength="2" data-zone="back" data-idx="0" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #1565c0;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="back" data-idx="1" oninput="onNumInput(event, 'my')" onkeydown="onNumKey(event, 'my')" onblur="onNumBlur(event, 'my')" style="width:44px;height:44px;border-radius:50%;border:2px solid #1565c0;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+      </div>
+    </div>
+
+    <!-- 开奖号码 -->
+    <div style="margin:20px 0 14px;">
+      <div style="font-size:13px;color:#888;margin-bottom:10px;">开奖号码</div>
+      <div id="drawInputs" style="display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#ef5350;">前区</span>
+        <input type="text" maxlength="2" data-zone="front" data-idx="0" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="1" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="2" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="3" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="front" data-idx="4" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #c62828;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <span style="font-size:12px;color:#42a5f5;margin-left:10px;">后区</span>
+        <input type="text" maxlength="2" data-zone="back" data-idx="0" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #1565c0;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+        <input type="text" maxlength="2" data-zone="back" data-idx="1" oninput="onNumInput(event, 'draw')" onkeydown="onNumKey(event, 'draw')" onblur="onNumBlur(event, 'draw')" style="width:44px;height:44px;border-radius:50%;border:2px solid #1565c0;background:#1a1a1a;color:#fff;text-align:center;font-size:16px;font-weight:700;outline:none;">
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin:16px 0;">
+      <span style="font-size:13px;color:#888;">期号</span>
+      <select id="periodSelect" onchange="onPeriodChange()" style="padding:6px 12px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e0e0e0;font-size:13px;outline:none;max-width:200px;">
+        <option value="">-- 选择期号 --</option>
+      </select>
+    </div>
+
+    <div class="draw-info" id="drawInfo"></div>
+    <div id="checkResult" style="display:none;"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-red" onclick="fetchLatestDraw()">📡 获取最新开奖号码</button>
+      <button class="btn btn-blue" onclick="checkWin()">🔍 查询是否中奖</button>
+    </div>
+
+    <div id="recentDraws" style="margin-top:20px;"></div>
+  </div>
+
+</div>
+
+<script>
+// ===== Tab =====
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['pick', 'check'][i] === name);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'check') initCheckPage();
+}
+
+// ===== Pick Page =====
+function randomNums(count, max) {
+  const set = new Set();
+  while (set.size < count) set.add(Math.floor(Math.random() * max) + 1);
+  return [...set].sort((a, b) => a - b);
+}
+
+function quickPick(n) {
+  const batch = [];
+  for (let i = 0; i < n; i++) {
+    batch.push({ front: randomNums(5, 35), back: randomNums(2, 12) });
+  }
+  showBatch(batch);
+}
+
+function showBatch(batch) {
+  const el = document.getElementById('multiBatch');
+  let html = '<div style="font-size:14px;color:#888;margin:20px 0 16px;">已生成 <b style="color:#ff9800;">' + batch.length + '</b> 注号码</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:12px;align-items:center;">';
+  batch.forEach((item, idx) => {
+    html += '<div style="padding:12px 20px;background:rgba(255,255,255,.02);border-radius:10px;">';
+    html += '<div style="color:#666;margin-bottom:6px;font-size:13px;">#' + (idx + 1) + '</div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">';
+    for (const n of item.front) html += '<span style="display:inline-block;width:36px;height:36px;line-height:36px;border-radius:50%;background:#c62828;color:#fff;text-align:center;font-size:16px;font-weight:700;">' + n + '</span>';
+    for (const n of item.back) html += '<span style="display:inline-block;width:36px;height:36px;line-height:36px;border-radius:50%;background:#1565c0;color:#fff;text-align:center;font-size:16px;font-weight:700;">' + n + '</span>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ===== Check Page =====
+let recentDrawsData = [];
+
+function getInputs(group) {
+  const el = document.getElementById(group === 'my' ? 'myInputs' : 'drawInputs');
+  return el.querySelectorAll('input');
+}
+
+function getValues(group) {
+  const front = [], back = [];
+  getInputs(group).forEach(inp => {
+    const v = parseInt(inp.value);
+    if (v >= 1) {
+      if (inp.dataset.zone === 'front') front.push(v);
+      else back.push(v);
+    }
+  });
+  return { front: front.sort((a,b)=>a-b), back: back.sort((a,b)=>a-b) };
+}
+
+function sortAndRefill(group) {
+  const vals = getValues(group);
+  let fi = 0, bi = 0;
+  getInputs(group).forEach(inp => {
+    if (inp.dataset.zone === 'front') {
+      inp.value = fi < vals.front.length ? String(vals.front[fi++]).padStart(2, '0') : '';
+    } else {
+      inp.value = bi < vals.back.length ? String(vals.back[bi++]).padStart(2, '0') : '';
+    }
+  });
+}
+
+function setValues(group, front, back) {
+  let fi = 0, bi = 0;
+  getInputs(group).forEach(inp => {
+    if (inp.dataset.zone === 'front') {
+      inp.value = fi < front.length ? String(front[fi++]).padStart(2, '0') : '';
+    } else {
+      inp.value = bi < back.length ? String(back[bi++]).padStart(2, '0') : '';
+    }
+  });
+}
+
+function onNumInput(e, group) {
+  const inp = e.target;
+  let v = inp.value.replace(/\D/g, '');
+  if (v) {
+    const max = inp.dataset.zone === 'back' ? 12 : 35;
+    let num = parseInt(v);
+    if (num > max) { num = max; v = String(max); }
+    const isBack = inp.dataset.zone === 'back';
+    const shouldAdvance = v.length >= 2 || num >= 10 || (isBack && num >= 3);
+    if (shouldAdvance) {
+      inp.value = String(num).padStart(2, '0');
+      // only sort when advancing, since value is confirmed
+      sortAndRefill(group);
+      const next = inp.nextElementSibling;
+      if (next && next.tagName === 'INPUT') { next.focus(); next.select(); }
+    } else {
+      inp.value = v;
+    }
+  }
+}
+
+function onNumKey(e, group) {
+  const inp = e.target;
+  if (e.key === 'Backspace' && inp.value === '') {
+    const prev = inp.previousElementSibling;
+    if (prev && prev.tagName === 'INPUT') { prev.focus(); prev.select(); }
+  }
+  if (e.key === 'ArrowRight') {
+    const next = inp.nextElementSibling;
+    if (next && next.tagName === 'INPUT') { next.focus(); next.select(); }
+  }
+  if (e.key === 'ArrowLeft') {
+    const prev = inp.previousElementSibling;
+    if (prev && prev.tagName === 'INPUT') { prev.focus(); prev.select(); }
+  }
+}
+
+function onNumBlur(e, group) {
+  const inp = e.target;
+  const v = parseInt(inp.value);
+  if (v >= 1) { inp.value = String(v).padStart(2, '0'); sortAndRefill(group); }
+}
+
+async function loadRecentDraws() {
+  try {
+    const res = await fetch('api/latest-draw?count=5');
+    const data = await res.json();
+    if (data.ok && data.draws) {
+      recentDrawsData = data.draws;
+      const sel = document.getElementById('periodSelect');
+      sel.innerHTML = '<option value="">-- 选择期号 --</option>';
+      data.draws.forEach((d, i) => {
+        sel.innerHTML += '<option value="' + i + '">第' + d.period + '期 (' + d.time + ')</option>';
+      });
+      if (data.draws.length > 0 && !sel.selectedIndex) {
+        sel.value = '0';
+        setValues('draw', data.draws[0].front, data.draws[0].back);
+        document.getElementById('drawInfo').style.display = 'block';
+        document.getElementById('drawInfo').innerHTML = '📅 第 <b>' + data.draws[0].period + '</b> 期 ｜ ' + data.draws[0].time + ' ｜ 官方数据';
+      }
+      renderRecentDraws(data.draws);
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function onPeriodChange() {
+  const idx = parseInt(document.getElementById('periodSelect').value);
+  if (idx >= 0 && recentDrawsData[idx]) {
+    const d = recentDrawsData[idx];
+    setValues('draw', d.front, d.back);
+    document.getElementById('drawInfo').style.display = 'block';
+    document.getElementById('drawInfo').innerHTML = '📅 第 <b>' + d.period + '</b> 期 ｜ ' + d.time + ' ｜ 官方数据';
+    document.getElementById('checkResult').style.display = 'none';
+  }
+}
+
+async function fetchLatestDraw() {
+  try {
+    const res = await fetch('api/latest-draw');
+    const data = await res.json();
+    if (data.ok && data.draws && data.draws.length > 0) {
+      const d = data.draws[0];
+      setValues('draw', d.front, d.back);
+      document.getElementById('drawInfo').style.display = 'block';
+      document.getElementById('drawInfo').innerHTML = '📅 第 <b>' + d.period + '</b> 期 ｜ ' + d.time + ' ｜ 官方数据';
+      document.getElementById('checkResult').style.display = 'none';
+      await loadRecentDraws();
+    } else {
+      alert('获取失败');
+    }
+  } catch (e) { alert('网络请求失败'); }
+}
+
+function renderRecentDraws(draws) {
+  const el = document.getElementById('recentDraws');
+  let html = '<div style="font-size:13px;color:#888;margin-bottom:10px;">📋 最近开奖</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+  draws.forEach(d => {
+    html += '<div style="padding:10px 14px;background:rgba(255,255,255,.02);border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;">';
+    html += '<span style="font-size:12px;color:#666;white-space:nowrap;">第<b style="color:#ff9800;">' + d.period + '</b>期 ' + d.time + '</span>';
+    html += '<div style="display:flex;gap:4px;">';
+    for (const n of d.front) html += '<span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;background:#c62828;color:#fff;text-align:center;font-size:13px;font-weight:700;">' + n + '</span>';
+    for (const n of d.back) html += '<span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;background:#1565c0;color:#fff;text-align:center;font-size:13px;font-weight:700;">' + n + '</span>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function getPrize(frontMatch, backMatch) {
+  if (frontMatch === 5 && backMatch === 2) return { tier: '一等奖', amount: '浮动（500万-1000万+）' };
+  if (frontMatch === 5 && backMatch === 1) return { tier: '二等奖', amount: '浮动（10万-100万）' };
+  if (frontMatch === 5 && backMatch === 0) return { tier: '三等奖', amount: '10,000 元' };
+  if (frontMatch === 4 && backMatch === 2) return { tier: '四等奖', amount: '3,000 元' };
+  if (frontMatch === 4 && backMatch === 1) return { tier: '五等奖', amount: '300 元' };
+  if (frontMatch === 3 && backMatch === 2) return { tier: '六等奖', amount: '200 元' };
+  if (frontMatch === 4 && backMatch === 0) return { tier: '七等奖', amount: '100 元' };
+  if ((frontMatch === 3 && backMatch === 1) || (frontMatch === 2 && backMatch === 2)) return { tier: '八等奖', amount: '15 元' };
+  if ((frontMatch === 3 && backMatch === 0) || (frontMatch === 2 && backMatch === 1) || (frontMatch === 1 && backMatch === 2) || (frontMatch === 0 && backMatch === 2)) return { tier: '九等奖', amount: '5 元' };
+  return null;
+}
+
+function checkWin() {
+  const my = getValues('my');
+  const draw = getValues('draw');
+  if (my.front.length < 5 || my.back.length < 2) { alert('请完整输入"我的号码"（前区5个 + 后区2个）'); return; }
+  if (draw.front.length < 5 || draw.back.length < 2) { alert('请完整输入"开奖号码"（前区5个 + 后区2个）'); return; }
+  const fm = my.front.filter(n => draw.front.includes(n)).length;
+  const bm = my.back.filter(n => draw.back.includes(n)).length;
+  const el = document.getElementById('checkResult');
+  el.style.display = 'block';
+  const prize = getPrize(fm, bm);
+  if (prize) {
+    el.innerHTML = '<div class="result win">' +
+      '<div class="match-info">前区中 <b>' + fm + '</b> 个 ｜ 后区中 <b>' + bm + '</b> 个</div>' +
+      '<div class="tier-name">' + prize.tier + '</div>' +
+      '<div class="prize-amount">' + prize.amount + '</div></div>';
+  } else {
+    el.innerHTML = '<div class="result no-win">' +
+      '<div class="match-info">前区中 <b>' + fm + '</b> 个 ｜ 后区中 <b>' + bm + '</b> 个</div>' +
+      '<div class="no-win-text">未中奖</div>' +
+      '<div class="no-win-sub">继续加油！</div></div>';
+  }
+}
+
+// Load recent draws on check page init
+function initCheckPage() {
+  if (recentDrawsData.length === 0) loadRecentDraws();
+}
+</script>
+</body>
+</html>
